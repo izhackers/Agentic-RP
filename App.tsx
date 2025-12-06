@@ -31,6 +31,9 @@ const App: React.FC = () => {
   // State for Settings Modal (Embed Mode)
   const [showSettings, setShowSettings] = useState(false);
 
+  // State for Manual API Key
+  const [apiKey, setApiKey] = useState('');
+
   // State for Toast Notification
   const [toast, setToast] = useState<{show: boolean, message: string}>({show: false, message: ''});
 
@@ -43,6 +46,19 @@ const App: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Load API Key from LocalStorage on mount
+  useEffect(() => {
+    const storedKey = localStorage.getItem("gemini_api_key");
+    if (storedKey) setApiKey(storedKey);
+  }, []);
+
+  // Save API Key to LocalStorage
+  const handleSaveApiKey = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newKey = e.target.value;
+    setApiKey(newKey);
+    localStorage.setItem("gemini_api_key", newKey);
+  };
 
   // Toast Helper
   const showToast = (message: string) => {
@@ -191,8 +207,8 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Pass documents AND the image attachment (if any) to the service
-      const reply = await sendMessageToGemini(messages, input, documents, currentImage || undefined);
+      // Pass apiKey manually if set in settings
+      const reply = await sendMessageToGemini(messages, input, documents, currentImage || undefined, apiKey);
       
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -281,6 +297,22 @@ const App: React.FC = () => {
                 onClick={() => setShowSettings(true)}
                 className="p-2 text-slate-300 hover:text-slate-500 bg-white/50 hover:bg-white rounded-full transition-all shadow-sm"
                 title="Tetapan Admin (Upload Dokumen)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 0 1 0 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281Z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* Settings / Gear Button for Desktop/Mobile (Always Visible) */}
+          {!isEmbedMode && (
+            <div className="absolute top-2 right-2 z-20">
+              <button 
+                 onClick={() => setShowSettings(true)}
+                 className="p-2 text-slate-300 hover:text-slate-500 bg-white/50 hover:bg-white rounded-full transition-all shadow-sm"
+                 title="Tetapan API & Dokumen"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 0 1 0 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281Z" />
@@ -402,28 +434,49 @@ const App: React.FC = () => {
         </section>
       </main>
 
-      {/* Admin Settings Modal (For Embed Mode) */}
+      {/* Admin Settings Modal */}
       {showSettings && (
         <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col overflow-hidden animate-fade-in-up">
             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="font-semibold text-slate-800">Tetapan Admin (Muat Naik RP)</h3>
+              <h3 className="font-semibold text-slate-800">Tetapan Admin</h3>
               <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-slate-600">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <div className="p-4 overflow-y-auto">
-              <p className="text-xs text-slate-500 mb-4 bg-yellow-50 p-2 rounded border border-yellow-100">
-                Amaran: Ruang ini untuk kegunaan admin sahaja. Sila muat naik dokumen RP sebelum embed link ini ke StoryMap.
-              </p>
-              <DocumentUploader 
-                onAddDocuments={handleAddDocuments} 
-                onRemoveDocument={handleRemoveDocument} 
-                documents={documents} 
-              />
+            
+            <div className="p-4 overflow-y-auto space-y-6">
+              
+              {/* API Key Section */}
+              <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                <h4 className="text-xs font-bold text-blue-800 uppercase mb-2">Konfigurasi API Key</h4>
+                <p className="text-[10px] text-blue-600 mb-2">
+                   Jika anda hosting di Vercel, set Environment Variable: <code>VITE_API_KEY</code>.
+                   <br/>Atau masukkan secara manual di bawah (disimpan dalam browser ini sahaja).
+                </p>
+                <input 
+                  type="password"
+                  placeholder="Masukkan Gemini API Key (AI Studio)"
+                  value={apiKey}
+                  onChange={handleSaveApiKey}
+                  className="w-full text-xs p-2 rounded border border-blue-200 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* Document Upload Section */}
+              <div>
+                <h4 className="text-sm font-semibold text-slate-700 mb-2">Muat Naik Dokumen RP</h4>
+                <DocumentUploader 
+                  onAddDocuments={handleAddDocuments} 
+                  onRemoveDocument={handleRemoveDocument} 
+                  documents={documents} 
+                />
+              </div>
+
             </div>
+            
             <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
               <button 
                 onClick={() => setShowSettings(false)} 
