@@ -6,13 +6,14 @@ import { AGEN_RP_SYSTEM_INSTRUCTION } from "../constants";
 // ⚠️ RUANG KHAS API KEY (MANUAL)
 // Sila paste API Key anda dari Google AI Studio di dalam tanda petikan di bawah.
 // ============================================================================
-const HARDCODED_API_KEY = "AIzaSyBaUcLalRkKh2h5GsKBLfX7A47DXxFEu8E"; // <--- PASTE KEY DI SINI (Contoh: "AIzaSy...")
+const HARDCODED_API_KEY = "AIzaSyBaUcLalRkKh2h5GsKBLfX7A47DXxFEu8E"; // <--- PASTE KEY DI SINI
 // ============================================================================
 
-// Fungsi selamat untuk mendapatkan API Key dari pelbagai sumber
+// Fungsi mudah untuk mendapatkan API Key
+// Kita buang semua cek process.env yang rumit untuk elak "Crash" di Vercel
 const getApiKey = (manualKey?: string): string => {
-  // 1. Cek Hardcoded Key (Paling Utama - jika pengguna isi di atas)
-  // Fix: Cast to string to prevent TypeScript from narrowing to 'never' on empty literal
+  // 1. Cek Hardcoded Key (Paling Utama)
+  // Casting to string explicit to avoid TS errors
   const hardcoded = HARDCODED_API_KEY as string;
   if (hardcoded && hardcoded.trim() !== "") {
     return hardcoded;
@@ -23,36 +24,12 @@ const getApiKey = (manualKey?: string): string => {
     return manualKey;
   }
 
-  // 3. Cek LocalStorage
+  // 3. Cek LocalStorage (untuk backup)
   try {
     const storedKey = localStorage.getItem("gemini_api_key");
     if (storedKey) return storedKey;
   } catch (e) {
-    // Abaikan ralat akses localStorage
-  }
-
-  // 4. Cek Environment Variables (Vite/Vercel standard)
-  // Menggunakan try-catch yang ketat untuk mengelakkan "process is not defined" crash
-  try {
-    // @ts-ignore
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
-      // @ts-ignore
-      return import.meta.env.VITE_API_KEY;
-    }
-  } catch (e) {
-    // Ignore error
-  }
-
-  try {
-    // @ts-ignore
-    if (typeof process !== 'undefined' && process.env) {
-      // @ts-ignore
-      if (process.env.API_KEY) return process.env.API_KEY;
-      // @ts-ignore
-      if (process.env.NEXT_PUBLIC_API_KEY) return process.env.NEXT_PUBLIC_API_KEY;
-    }
-  } catch (e) {
-    // Abaikan ralat 'process is not defined'
+    // Abaikan
   }
 
   return "";
@@ -62,7 +39,8 @@ export const createClient = (manualKey?: string) => {
   const apiKey = getApiKey(manualKey);
   
   if (!apiKey) {
-    throw new Error("API Key tidak dijumpai. Sila paste key di dalam fail services/gemini.ts (HARDCODED_API_KEY) atau masukkan di butang Tetapan.");
+    // Fallback error message jika key kosong
+    throw new Error("API Key tidak dijumpai. Sila pastikan HARDCODED_API_KEY diisi dalam fail services/gemini.ts");
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -185,10 +163,9 @@ export const sendMessageToGemini = async (
   } catch (error: any) {
     console.error("Error calling Gemini API:", error);
     
-    // Friendly error message handling
     if (error.message.includes("API Key")) {
       return "RALAT API KEY: Sila masukkan API Key dalam fail 'services/gemini.ts' (hardcoded) atau di butang Tetapan.";
     }
-    return "Maaf, terdapat masalah teknikal semasa memproses permintaan anda. Sila pastikan API Key adalah sah.";
+    return "Maaf, terdapat masalah teknikal. Sila semak sambungan internet atau API Key anda.";
   }
 };
