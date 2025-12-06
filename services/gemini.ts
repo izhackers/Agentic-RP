@@ -2,46 +2,52 @@ import { GoogleGenAI, Content, Part } from "@google/genai";
 import { Message, Role, RPDocument } from "../types";
 import { AGEN_RP_SYSTEM_INSTRUCTION } from "../constants";
 
+// ============================================================================
+// ⚠️ RUANG KHAS API KEY (MANUAL)
+// Jika anda menghadapi masalah dengan Vercel/Env, masukkan API Key anda di bawah.
+// ============================================================================
+const HARDCODED_API_KEY: string = "AIzaSyBaUcLalRkKh2h5GsKBLfX7A47DXxFEu8E"; // <--- PASTE API KEY ANDA DI SINI (Cth: "AIzaSy...")
+// ============================================================================
+
 // Fungsi selamat untuk mendapatkan API Key dari pelbagai sumber
 const getApiKey = (manualKey?: string): string => {
-  // 1. Cek key yang dimasukkan manual dari UI
+  // 1. Cek Hardcoded Key (Paling Utama - jika pengguna isi di atas)
+  if (HARDCODED_API_KEY && HARDCODED_API_KEY.trim() !== "") {
+    return HARDCODED_API_KEY;
+  }
+
+  // 2. Cek key yang dimasukkan manual dari UI (Butang Gear)
   if (manualKey && manualKey.trim() !== "") {
     return manualKey;
   }
 
-  // 2. Cek LocalStorage (jika pengguna pernah simpan sebelum ini)
+  // 3. Cek LocalStorage
   try {
     const storedKey = localStorage.getItem("gemini_api_key");
     if (storedKey) return storedKey;
   } catch (e) {
-    // Abaikan ralat jika akses localStorage dihalang
+    // Abaikan
   }
 
-  // 3. Cek Environment Variables (Vite/Vercel standard)
-  // Nota: Kita guna import.meta.env untuk Vite
-  // Fix: Handle 'Property env does not exist on type ImportMeta' by casting to any
+  // 4. Cek Environment Variables (Vite/Vercel standard)
   try {
-    if (typeof import.meta !== 'undefined') {
-      const meta = import.meta as any;
-      if (meta.env && meta.env.VITE_API_KEY) {
-        return meta.env.VITE_API_KEY;
-      }
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
+      // @ts-ignore
+      return import.meta.env.VITE_API_KEY;
     }
   } catch (e) {
     // Ignore error
   }
 
-  // 4. Cek process.env (Next.js atau Webpack lama) dengan cara selamat
+  // 5. Cek process.env (Next.js atau Webpack lama)
   try {
     // @ts-ignore
-    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+    if (typeof process !== 'undefined' && process.env) {
       // @ts-ignore
-      return process.env.API_KEY;
-    }
-    // @ts-ignore
-    if (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_API_KEY) {
+      if (process.env.API_KEY) return process.env.API_KEY;
       // @ts-ignore
-      return process.env.NEXT_PUBLIC_API_KEY;
+      if (process.env.NEXT_PUBLIC_API_KEY) return process.env.NEXT_PUBLIC_API_KEY;
     }
   } catch (e) {
     // Abaikan ralat 'process is not defined'
@@ -54,7 +60,7 @@ export const createClient = (manualKey?: string) => {
   const apiKey = getApiKey(manualKey);
   
   if (!apiKey) {
-    throw new Error("API Key tidak dijumpai. Sila masukkan API Key di Tetapan atau set VITE_API_KEY di Vercel.");
+    throw new Error("API Key tidak dijumpai. Sila paste key di dalam fail services/gemini.ts (HARDCODED_API_KEY) atau masukkan di butang Tetapan.");
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -179,7 +185,7 @@ export const sendMessageToGemini = async (
     
     // Friendly error message handling
     if (error.message.includes("API Key")) {
-      return "RALAT API KEY: Sila masukkan Gemini API Key yang sah di dalam butang Tetapan (ikon Gear) atau semak konfigurasi Vercel.";
+      return "RALAT API KEY: Sila masukkan API Key dalam fail 'services/gemini.ts' atau di Tetapan.";
     }
     return "Maaf, terdapat masalah teknikal semasa memproses permintaan anda (Ralat Sambungan/Token). Sila pastikan API Key dimasukkan.";
   }
