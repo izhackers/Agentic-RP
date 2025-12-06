@@ -128,7 +128,8 @@ export const sendMessageToGemini = async (
       chatHistory.unshift(contextMessage);
     }
 
-    const model = "gemini-2.5-flash"; 
+    // Menggunakan gemini-3-pro-preview untuk analisis dokumen yang lebih baik (Complex Text Tasks)
+    const model = "gemini-3-pro-preview"; 
     
     const chat = ai.chats.create({
       model: model,
