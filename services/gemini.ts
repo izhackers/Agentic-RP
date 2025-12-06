@@ -4,16 +4,18 @@ import { AGEN_RP_SYSTEM_INSTRUCTION } from "../constants";
 
 // ============================================================================
 // ⚠️ RUANG KHAS API KEY (MANUAL)
-// Jika anda menghadapi masalah dengan Vercel/Env, masukkan API Key anda di bawah.
+// Sila paste API Key anda dari Google AI Studio di dalam tanda petikan di bawah.
 // ============================================================================
-const HARDCODED_API_KEY: string = "AIzaSyBaUcLalRkKh2h5GsKBLfX7A47DXxFEu8E"; // <--- PASTE API KEY ANDA DI SINI (Cth: "AIzaSy...")
+const HARDCODED_API_KEY = "AIzaSyBaUcLalRkKh2h5GsKBLfX7A47DXxFEu8E"; // <--- PASTE KEY DI SINI (Contoh: "AIzaSy...")
 // ============================================================================
 
 // Fungsi selamat untuk mendapatkan API Key dari pelbagai sumber
 const getApiKey = (manualKey?: string): string => {
   // 1. Cek Hardcoded Key (Paling Utama - jika pengguna isi di atas)
-  if (HARDCODED_API_KEY && HARDCODED_API_KEY.trim() !== "") {
-    return HARDCODED_API_KEY;
+  // Fix: Cast to string to prevent TypeScript from narrowing to 'never' on empty literal
+  const hardcoded = HARDCODED_API_KEY as string;
+  if (hardcoded && hardcoded.trim() !== "") {
+    return hardcoded;
   }
 
   // 2. Cek key yang dimasukkan manual dari UI (Butang Gear)
@@ -26,10 +28,11 @@ const getApiKey = (manualKey?: string): string => {
     const storedKey = localStorage.getItem("gemini_api_key");
     if (storedKey) return storedKey;
   } catch (e) {
-    // Abaikan
+    // Abaikan ralat akses localStorage
   }
 
   // 4. Cek Environment Variables (Vite/Vercel standard)
+  // Menggunakan try-catch yang ketat untuk mengelakkan "process is not defined" crash
   try {
     // @ts-ignore
     if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
@@ -40,7 +43,6 @@ const getApiKey = (manualKey?: string): string => {
     // Ignore error
   }
 
-  // 5. Cek process.env (Next.js atau Webpack lama)
   try {
     // @ts-ignore
     if (typeof process !== 'undefined' && process.env) {
@@ -185,8 +187,8 @@ export const sendMessageToGemini = async (
     
     // Friendly error message handling
     if (error.message.includes("API Key")) {
-      return "RALAT API KEY: Sila masukkan API Key dalam fail 'services/gemini.ts' atau di Tetapan.";
+      return "RALAT API KEY: Sila masukkan API Key dalam fail 'services/gemini.ts' (hardcoded) atau di butang Tetapan.";
     }
-    return "Maaf, terdapat masalah teknikal semasa memproses permintaan anda (Ralat Sambungan/Token). Sila pastikan API Key dimasukkan.";
+    return "Maaf, terdapat masalah teknikal semasa memproses permintaan anda. Sila pastikan API Key adalah sah.";
   }
 };
