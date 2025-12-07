@@ -10,7 +10,6 @@ const HARDCODED_API_KEY = "AIzaSyBaUcLalRkKh2h5GsKBLfX7A47DXxFEu8E"; // <--- PAS
 // ============================================================================
 
 // Fungsi mudah untuk mendapatkan API Key
-// Kita buang semua cek process.env yang rumit untuk elak "Crash" di Vercel
 const getApiKey = (manualKey?: string): string => {
   // 1. Cek Hardcoded Key (Paling Utama)
   // Casting to string explicit to avoid TS errors
@@ -39,8 +38,7 @@ export const createClient = (manualKey?: string) => {
   const apiKey = getApiKey(manualKey);
   
   if (!apiKey) {
-    // Fallback error message jika key kosong
-    throw new Error("API Key tidak dijumpai. Sila pastikan HARDCODED_API_KEY diisi dalam fail services/gemini.ts");
+    throw new Error("API Key tidak dijumpai. Sila pastikan HARDCODED_API_KEY diisi dalam fail services/gemini.ts atau masukkan di Tetapan.");
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -128,8 +126,8 @@ export const sendMessageToGemini = async (
       chatHistory.unshift(contextMessage);
     }
 
-    // Menggunakan gemini-3-pro-preview untuk analisis dokumen yang lebih baik (Complex Text Tasks)
-    const model = "gemini-3-pro-preview"; 
+    // Menggunakan gemini-2.5-flash untuk kestabilan (Basic/Complex Text Tasks fallback)
+    const model = "gemini-2.5-flash"; 
     
     const chat = ai.chats.create({
       model: model,
@@ -164,9 +162,8 @@ export const sendMessageToGemini = async (
   } catch (error: any) {
     console.error("Error calling Gemini API:", error);
     
-    if (error.message.includes("API Key")) {
-      return "RALAT API KEY: Sila masukkan API Key dalam fail 'services/gemini.ts' (hardcoded) atau di butang Tetapan.";
-    }
-    return "Maaf, terdapat masalah teknikal. Sila semak sambungan internet atau API Key anda.";
+    // Papar mesej ralat sebenar untuk debugging
+    const errorMessage = error.message || JSON.stringify(error);
+    return `⚠️ RALAT TEKNIKAL: ${errorMessage}\n\nSila semak API Key anda, pastikan 'gemini-2.5-flash' disokong, atau periksa kuota anda.`;
   }
 };
