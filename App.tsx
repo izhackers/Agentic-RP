@@ -49,15 +49,23 @@ const App: React.FC = () => {
 
   // Load API Key from LocalStorage on mount
   useEffect(() => {
-    const storedKey = localStorage.getItem("gemini_api_key");
-    if (storedKey) setApiKey(storedKey);
+    try {
+      const storedKey = localStorage.getItem("gemini_api_key");
+      if (storedKey) setApiKey(storedKey);
+    } catch (error) {
+      console.warn("Storage access restricted (iframe/incognito mode).", error);
+    }
   }, []);
 
   // Save API Key to LocalStorage
   const handleSaveApiKey = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newKey = e.target.value;
     setApiKey(newKey);
-    localStorage.setItem("gemini_api_key", newKey);
+    try {
+      localStorage.setItem("gemini_api_key", newKey);
+    } catch (error) {
+      console.warn("Storage access restricted. Key will strictly be in-memory.", error);
+    }
   };
 
   // Toast Helper
@@ -306,22 +314,6 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {/* Settings / Gear Button for Desktop/Mobile (Always Visible) */}
-          {!isEmbedMode && (
-            <div className="absolute top-2 right-2 z-20">
-              <button 
-                 onClick={() => setShowSettings(true)}
-                 className="p-2 text-slate-300 hover:text-slate-500 bg-white/50 hover:bg-white rounded-full transition-all shadow-sm"
-                 title="Tetapan API & Dokumen"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 0 1 0 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281Z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                </svg>
-              </button>
-            </div>
-          )}
-
           {/* Mobile Upload Warning (If doc not uploaded) - Hidden in Embed Mode */}
           {!isEmbedMode && (
             <div className="md:hidden p-2 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
@@ -453,16 +445,45 @@ const App: React.FC = () => {
               <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
                 <h4 className="text-xs font-bold text-blue-800 uppercase mb-2">Konfigurasi API Key</h4>
                 <p className="text-[10px] text-blue-600 mb-2">
-                   Jika anda hosting di Vercel, set Environment Variable: <code>VITE_API_KEY</code>.
-                   <br/>Atau masukkan secara manual di bawah (disimpan dalam browser ini sahaja).
+                   Masukkan Gemini API Key anda. Ia akan disimpan dalam pelayar (Local Storage) untuk sesi ini.
                 </p>
-                <input 
-                  type="password"
-                  placeholder="Masukkan Gemini API Key (AI Studio)"
-                  value={apiKey}
-                  onChange={handleSaveApiKey}
-                  className="w-full text-xs p-2 rounded border border-blue-200 focus:outline-none focus:border-blue-500"
-                />
+                <div className="flex gap-2">
+                  <input 
+                    type="password"
+                    placeholder="Tampal API Key di sini..."
+                    value={apiKey}
+                    onChange={handleSaveApiKey}
+                    className="flex-1 text-xs p-2 rounded border border-blue-200 focus:outline-none focus:border-blue-500"
+                  />
+                  {apiKey && (
+                    <button 
+                      onClick={() => {
+                        setApiKey('');
+                        try {
+                          localStorage.removeItem("gemini_api_key");
+                        } catch(e) { console.warn("Storage restricted", e); }
+                      }}
+                      className="bg-red-100 text-red-600 px-3 py-1 rounded text-xs hover:bg-red-200"
+                      title="Padam Key"
+                    >
+                      Padam
+                    </button>
+                  )}
+                </div>
+                <div className="mt-2 text-[10px] text-right">
+                  <a 
+                    href="https://aistudio.google.com/app/apikey" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline inline-flex items-center"
+                  >
+                    Dapatkan API Key di sini
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 ml-1">
+                      <path fillRule="evenodd" d="M4.25 5.5a.75.75 0 0 0-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 0 0 .75-.75v-4a.75.75 0 0 1 1.5 0v4A2.25 2.25 0 0 1 12.75 17h-8.5A2.25 2.25 0 0 1 2 14.75v-8.5A2.25 2.25 0 0 1 4.25 4h5a.75.75 0 0 1 0 1.5h-5Z" clipRule="evenodd" />
+                      <path fillRule="evenodd" d="M6.194 12.753a.75.75 0 0 0 1.06.053L16.5 4.44v2.81a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-.75-.75h-4.5a.75.75 0 0 0 0 1.5h2.553l-9.056 8.194a.75.75 0 0 0-.053 1.06Z" clipRule="evenodd" />
+                    </svg>
+                  </a>
+                </div>
               </div>
 
               {/* Document Upload Section */}
