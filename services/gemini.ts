@@ -3,32 +3,37 @@ import { Message, Role, RPDocument } from "../types";
 import { AGEN_RP_SYSTEM_INSTRUCTION } from "../constants";
 
 // ============================================================================
-// ⚠️ RUANG KHAS API KEY (MANUAL)
-// Sila paste API Key anda dari Google AI Studio di dalam tanda petikan di bawah.
+// ⚠️ PANDUAN KESELAMATAN API KEY
+// Jangan letak API Key di sini jika anda upload ke GitHub (Public Repo).
+// Google akan mengesan dan mematikan key tersebut (Leaked Key).
+//
+// CARA SELAMAT:
+// 1. Biarkan variable di bawah KOSONG string kosong "".
+// 2. Buka aplikasi di browser -> Klik ikon Gear (Tetapan).
+// 3. Masukkan API Key secara manual di menu tersebut.
 // ============================================================================
-const HARDCODED_API_KEY = "AIzaSyBaUcLalRkKh2h5GsKBLfX7A47DXxFEu8E"; // <--- PASTE KEY DI SINI
+const HARDCODED_API_KEY = ""; 
 // ============================================================================
 
 // Fungsi mudah untuk mendapatkan API Key
 const getApiKey = (manualKey?: string): string => {
-  // 1. Cek Hardcoded Key (Paling Utama)
-  // Casting to string explicit to avoid TS errors
-  const hardcoded = HARDCODED_API_KEY as string;
-  if (hardcoded && hardcoded.trim() !== "") {
-    return hardcoded;
-  }
-
-  // 2. Cek key yang dimasukkan manual dari UI (Butang Gear)
+  // 1. Cek key yang dimasukkan manual dari UI (Butang Gear) - INI UTAMA
   if (manualKey && manualKey.trim() !== "") {
     return manualKey;
   }
 
-  // 3. Cek LocalStorage (untuk backup)
+  // 2. Cek LocalStorage (jika user refresh page, key masih ada di browser)
   try {
     const storedKey = localStorage.getItem("gemini_api_key");
     if (storedKey) return storedKey;
   } catch (e) {
-    // Abaikan
+    // Abaikan ralat security (jika iframe/embed menghalang access storage)
+  }
+
+  // 3. Cek Hardcoded Key (Hanya untuk testing localhost, jangan commit ke github)
+  const hardcoded = HARDCODED_API_KEY as string;
+  if (hardcoded && hardcoded.trim() !== "") {
+    return hardcoded;
   }
 
   return "";
@@ -38,7 +43,8 @@ export const createClient = (manualKey?: string) => {
   const apiKey = getApiKey(manualKey);
   
   if (!apiKey) {
-    throw new Error("API Key tidak dijumpai. Sila pastikan HARDCODED_API_KEY diisi dalam fail services/gemini.ts atau masukkan di Tetapan.");
+    // Return null supaya UI boleh handle error "Key Missing"
+    return null; 
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -53,6 +59,10 @@ export const sendMessageToGemini = async (
   
   try {
     const ai = createClient(manualApiKey);
+
+    if (!ai) {
+      throw new Error("MISSING_KEY");
+    }
     
     // 1. Prepare System Instruction
     let systemInstructionText = `${AGEN_RP_SYSTEM_INSTRUCTION}
@@ -126,7 +136,7 @@ export const sendMessageToGemini = async (
       chatHistory.unshift(contextMessage);
     }
 
-    // Menggunakan gemini-2.5-flash untuk kestabilan (Basic/Complex Text Tasks fallback)
+    // Menggunakan gemini-2.5-flash untuk kestabilan & kos efektif
     const model = "gemini-2.5-flash"; 
     
     const chat = ai.chats.create({
@@ -162,8 +172,21 @@ export const sendMessageToGemini = async (
   } catch (error: any) {
     console.error("Error calling Gemini API:", error);
     
-    // Papar mesej ralat sebenar untuk debugging
-    const errorMessage = error.message || JSON.stringify(error);
-    return `⚠️ RALAT TEKNIKAL: ${errorMessage}\n\nSila semak API Key anda, pastikan 'gemini-2.5-flash' disokong, atau periksa kuota anda.`;
+    let errorMessage = error.message || JSON.stringify(error);
+    
+    if (errorMessage.includes("MISSING_KEY")) {
+       return `⚠️ **API Key Diperlukan**\n\nSila klik butang **Tetapan (Gear)** di penjuru atas kanan dan masukkan API Key anda.\n\n(Disebabkan isu keselamatan, kami tidak menyimpan API Key dalam kod sistem).`;
+    }
+    
+    // Handle specific Google API errors for better UX
+    if (errorMessage.includes("403")) {
+      errorMessage = "API Key ditolak. Kunci mungkin telah tamat tempoh, salah, atau disekat (Leaked). Sila jana kunci baru.";
+    } else if (errorMessage.includes("429")) {
+      errorMessage = "Kuota penggunaan API telah habis (Quota Exceeded). Sila cuba sebentar lagi.";
+    } else if (errorMessage.includes("400")) {
+      errorMessage = "Permintaan tidak sah (Bad Request). Sila semak fail atau input anda.";
+    }
+
+    return `⚠️ RALAT TEKNIKAL: ${errorMessage}`;
   }
 };
