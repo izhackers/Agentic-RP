@@ -7,8 +7,23 @@ import { sendMessageToGemini } from './services/gemini';
 import { EXAMPLE_QUESTIONS, INITIAL_WELCOME_MESSAGE, CONNECTION_ERROR_MESSAGE, APP_NAME, APP_SUBTITLE, DISCLAIMER_TEXT } from './constants';
 
 const App: React.FC = () => {
-  // Check for embed mode query param
-  const isEmbedMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mode') === 'embed';
+  // Enhanced Embed Mode Detection
+  // Changed: Now ONLY checks URL param ?mode=embed. 
+  // Removed auto-detection (window.self !== window.top) because it hides UI in preview environments.
+  const [isEmbedMode, setIsEmbedMode] = useState(false);
+
+  useEffect(() => {
+    const checkEmbedStatus = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const modeParam = urlParams.get('mode') === 'embed';
+      
+      // Only switch to embed mode if explicitly requested via URL
+      if (modeParam) {
+        setIsEmbedMode(true);
+      }
+    };
+    checkEmbedStatus();
+  }, []);
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -38,6 +53,13 @@ const App: React.FC = () => {
   const [toast, setToast] = useState<{show: boolean, message: string}>({show: false, message: ''});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Check if current environment is a temporary preview (Google IDX/AI Studio)
+  const isPreviewEnv = typeof window !== 'undefined' && (
+    window.location.hostname.includes('googleusercontent') || 
+    window.location.hostname.includes('webcontainer') ||
+    window.location.hostname.includes('scf')
+  );
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -197,6 +219,19 @@ const App: React.FC = () => {
     }
   };
 
+  const handleCopyEmbedLink = async () => {
+    // Construct current URL with ?mode=embed
+    const baseUrl = window.location.origin + window.location.pathname;
+    const embedUrl = `${baseUrl}?mode=embed`;
+    
+    try {
+      await navigator.clipboard.writeText(embedUrl);
+      showToast("Pautan Embed disalin!");
+    } catch (err) {
+      showToast("Gagal menyalin pautan.");
+    }
+  };
+
   const handleSend = async () => {
     if ((!input.trim() && !selectedImage) || isLoading) return;
 
@@ -248,18 +283,17 @@ const App: React.FC = () => {
 
   return (
     <div className={`flex flex-col h-screen font-sans text-slate-800 relative ${isEmbedMode ? 'bg-white' : 'bg-slate-100'}`}>
-      {!isEmbedMode && <Header onShare={handleShare} />}
+      {!isEmbedMode && <Header onShare={handleShare} onOpenSettings={() => setShowSettings(true)} />}
       
       <main className="flex-1 flex overflow-hidden max-w-7xl mx-auto w-full p-4 gap-4">
         
         {/* Sidebar - Info & Upload (Hidden in Embed Mode) */}
         {!isEmbedMode && (
           <aside className="hidden md:flex flex-col w-1/3 lg:w-1/4 h-full gap-4">
-            <DocumentUploader 
-              onAddDocuments={handleAddDocuments} 
-              onRemoveDocument={handleRemoveDocument} 
-              documents={documents} 
-            />
+            {/* 
+               REMOVED DocumentUploader from here as requested. 
+               Users should use Settings button to upload documents. 
+            */}
             
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex-1 overflow-y-auto">
               <h3 className="text-sm font-semibold text-slate-700 mb-3">Contoh Pertanyaan</h3>
@@ -293,7 +327,7 @@ const App: React.FC = () => {
             <div className="absolute top-2 right-2 z-20 flex space-x-2">
               <button 
                 onClick={handleShare}
-                className="p-2 text-slate-300 hover:text-slate-500 bg-white/50 hover:bg-white rounded-full transition-all shadow-sm"
+                className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 border border-slate-200 hover:border-blue-300 rounded-full transition-all shadow-sm"
                 title="Kongsi Transkrip"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
@@ -303,7 +337,7 @@ const App: React.FC = () => {
 
               <button 
                 onClick={() => setShowSettings(true)}
-                className="p-2 text-slate-300 hover:text-slate-500 bg-white/50 hover:bg-white rounded-full transition-all shadow-sm"
+                className="p-2 text-slate-400 hover:text-blue-600 bg-slate-50 border border-slate-200 hover:border-blue-300 rounded-full transition-all shadow-sm"
                 title="Tetapan Admin (Upload Dokumen)"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -320,12 +354,12 @@ const App: React.FC = () => {
                <span className="text-xs font-semibold text-slate-600">
                   {documents.length > 0 ? `${documents.length} Fail Dimuat Naik` : "Tiada Dokumen Rujukan"}
                </span>
-               <label className="text-xs bg-blue-600 text-white px-3 py-1 rounded cursor-pointer">
-                  + Tambah
-                  <input type="file" multiple className="hidden" accept=".txt,.pdf" onChange={(e) => {
-                    if (e.target.files) handleAddDocuments(Array.from(e.target.files));
-                  }}/>
-               </label>
+               <button 
+                  onClick={() => setShowSettings(true)}
+                  className="text-xs bg-blue-600 text-white px-3 py-1 rounded cursor-pointer"
+               >
+                  Tetapan / Upload
+               </button>
             </div>
           )}
 
@@ -441,6 +475,33 @@ const App: React.FC = () => {
             
             <div className="p-4 overflow-y-auto space-y-6">
               
+              {/* Embed Link Generator */}
+              <div className={`border rounded-lg p-3 ${isPreviewEnv ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-100'}`}>
+                 <h4 className={`text-xs font-bold uppercase mb-2 ${isPreviewEnv ? 'text-red-800' : 'text-green-800'}`}>
+                    Pautan Embed (ArcGIS StoryMap)
+                 </h4>
+                 <p className={`text-[10px] mb-2 ${isPreviewEnv ? 'text-red-700' : 'text-green-700'}`}>
+                    {isPreviewEnv 
+                      ? "⚠️ AMARAN: Ini adalah pautan PREVIEW (sementara). Sila buka App di Vercel (.vercel.app) untuk dapatkan link sebenar." 
+                      : "Gunakan pautan ini di dalam ArcGIS StoryMap (Embed Block) untuk memaparkan ruang chat sahaja."
+                    }
+                 </p>
+                 <div className="flex gap-2">
+                   <input 
+                     type="text" 
+                     readOnly
+                     value={`${window.location.origin}${window.location.pathname}?mode=embed`}
+                     className={`flex-1 text-[10px] p-2 rounded border bg-white text-slate-500 ${isPreviewEnv ? 'border-red-200' : 'border-green-200'}`}
+                   />
+                   <button 
+                     onClick={handleCopyEmbedLink}
+                     className={`px-3 py-1 rounded text-xs text-white flex items-center ${isPreviewEnv ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}
+                   >
+                     Salin
+                   </button>
+                 </div>
+              </div>
+
               {/* API Key Section */}
               <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
                 <h4 className="text-xs font-bold text-blue-800 uppercase mb-2">Konfigurasi API Key</h4>
