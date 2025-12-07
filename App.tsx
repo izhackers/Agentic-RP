@@ -247,7 +247,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-100 font-sans text-slate-800 relative">
+    <div className={`flex flex-col h-screen font-sans text-slate-800 relative ${isEmbedMode ? 'bg-white' : 'bg-slate-100'}`}>
       {!isEmbedMode && <Header onShare={handleShare} />}
       
       <main className="flex-1 flex overflow-hidden max-w-7xl mx-auto w-full p-4 gap-4">
