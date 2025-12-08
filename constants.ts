@@ -156,7 +156,7 @@ Jika pengguna berkata “Beri dalam JSON”, guna template:
 
 export const EXAMPLE_QUESTIONS = [
   "Sediakan ringkasan RP ini",
-  "buat ringkasan jumlah inesiatif",
+  "buat ringkasan jumlah inisiatif",
   "Berapakah nisbah plot maksimum kawasan ini?",
   "Apakah syarat bagi pembangunan stesen minyak?",
   "Buat ringkasan dasar alam sekitar"
